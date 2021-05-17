@@ -1,66 +1,72 @@
 require('dotenv').config();
 const express = require('express');
-const morgan = require('morgan')
+const morgan = require('morgan');
+const userRouter = require('./routes/users');
+const db = require('./db')
 
 const app = express();
 
 // 1. Set up middleware
 app.use(morgan('dev'));
-app.use(express.json());
+app.use(express.json()); 
 
-app.get('/api/v1/restaurants', (req,res,next) => {
+app.get('/api/v1/restaurants', async (req,res) => {
+    const {rows} = await db.query(`select * from restaurants`);
     res.status(200).json({
         message: "success",
+        results: rows.length,
         data: {
-            restaurants: restaurantsData
+            restaurants: rows
         }
     })
 })
 
-app.post('/api/v1/restaurants', (req,res,next) => {
-    const newRestaurant = req.body;
-    restaurantsData.push(newRestaurant)
+app.post('/api/v1/restaurants', async(req,res) => {
+    const {name, location, price_range} = req.body;
+    const {rows} = await db.query(`insert into restaurants(name, location, price_range) values($1, $2, $3) returning *`, [name, location, price_range])
     res.status(201).json({
         message: "success",
         params: req.params,
         data: {
-            restaurants: restaurantsData
+            restaurant: rows[0]
         }
     })
 })
 
-app.get('/api/v1/restaurants/:id', (req,res,next) => {
-    const restaurantId = req.params.id
-    const restaurant = restaurantsData.find(restaurant => restaurant.id == restaurantId);
+app.get('/api/v1/restaurants/:id', async (req,res,next) => {
+    const restaurantId = req.params.id;
+    const {rows} = await db.query(`select * from restaurants where id = $1`, [restaurantId]);
     res.status(200).json({
         message: "success",
         params: req.params,
         data: {
-            restaurant
+            restaurant: rows[0]
         }
     })
 })
 
 app.put('/api/v1/restaurants/:id', (req,res,next) => {
+    // const restaurantId = req.params.id;
+    // const {name, location, price_range} = req.body;
+    // const {rows} = db.query(`update restaurants set ${name ? `name = $1`: ``}`)
+    // res.status(200).json({
+    //     message: "success",
+    //     params: req.params,
+    //     data: {
+    //         restaurant
+    //     }
+    // })
+})
+
+app.delete('/api/v1/restaurants/:id', async (req,res) => {
     const restaurantId = req.params.id
-    const modifiedRestaurantData = req.body
-    let restaurant = restaurantsData.find(restaurant => restaurant.id == restaurantId);
-    Object.assign(restaurant, modifiedRestaurantData)
+    const {rows} = await db.query(`delete from restaurants where id = $1 returning *`, [restaurantId])
     res.status(200).json({
         message: "success",
         params: req.params,
         data: {
-            restaurant
+            restaurant: rows[0]
         }
-    })
-})
-
-app.delete('/api/v1/restaurants/:id', (req,res) => {
-    const restaurantId = req.params.id
-    restaurantsData = restaurantsData.filter(restaurant => restaurant.id != restaurantId);
-    res.status(200).json({
-        message: "success",
-        params: req.params
     })
 })
 
